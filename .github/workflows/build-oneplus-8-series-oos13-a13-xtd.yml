@@ -5,15 +5,14 @@ on:
   workflow_dispatch:
 
 env:
-  # Device env
   DEVICE_NAME : "oneplus_8_cn"
   DEVICE_CODENAME : "instantnoodle"
 
   CUSTOM_CMDS : "CLANG_TRIPLE=aarch64-linux-gnu-"
   EXTRA_CMDS : "LD=ld.lld"
 
-  KERNEL_SOURCE : "https://github.com/ppajda/android_kernel_oneplus_sm8250.git"
-  KERNEL_BRANCH : "oos13.1"
+  KERNEL_SOURCE : "https://github.com/nasbdh9/android_kernel_oneplus_sm8250.git"
+  KERNEL_BRANCH : "lineage-20"
 
   CLANG_SOURCE : "https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/LLVM-19.1.7-Linux-X64.tar.xz"
   CLANG_BRANCH : ""
@@ -25,15 +24,15 @@ env:
   GCC_32_BRANCH : "arm32"
 
   DEFCONFIG_SOURCE: ""
-  DEFCONFIG_NAME : "xtd_defconfig"
+  DEFCONFIG_NAME : "kona-perf_defconfig"
   DEFCONFIG_ORIGIN_IMAGE: ""
   DEFCONFIG_FROM_BOOT: false
 
-  KERNELSU_SOURCE : "https://raw.githubusercontent.com/backslashxx/KernelSU/refs/heads/master/kernel/setup.sh"
-  KERNELSU_BRANCH : "v0.9.5"
+  KERNELSU_SOURCE : ""
+  KERNELSU_BRANCH : ""
 
-  KERNELSU_AUTO_GET : "false" # if u want easy setting kernelsu, u can true.
-  KERNELSU_AUTO_FORK : "rsuntk" # magic, rsuntk , next and sukisu
+  KERNELSU_AUTO_GET : "false"
+  KERNELSU_AUTO_FORK : "rsuntk"
 
   SUSFS_ENABLE : false
   SUSFS_FIXED : false
@@ -47,45 +46,44 @@ env:
   NEED_DTBO : false
   NEED_SAFE_DTBO : false
 
-  ROM_TEXT : "oxygen13.1_a13"
+  ROM_TEXT : "lineage20_a13"
 
-  # Other env
-  PYTHON_VERSION: "3" # Only 2(Ubuntu 22.04 and Ubuntu 20.04) or 3(Any OS Versions).
+  PYTHON_VERSION: "3"
 
-  PACK_METHOD: "Anykernel3" # Anykernel3 need SOURCE and BRANCH, MKBOOTIMG needn't it.
+  PACK_METHOD: "Anykernel3"
 
-  KERNELSU_METHOD: "shell" # shell, manual and only.
+  KERNELSU_METHOD: "shell"
 
-  PATCHES_SOURCE: "focus-on1/NonGKI_Kernel_Patches"  # [your_name]/[your_patch] -> gooder123/NonGKI_Patcher
-  PATCHES_BRANCH:  "op_kernel" # [your_branch] -> main
+  PATCHES_SOURCE: ""
+  PATCHES_BRANCH: ""
 
-  SUSFS_FOLDER_FIXED: "kona_oos" # Fill in your patch prefix directory here. Leave it blank if there isn't one. -> your_folder
-  SUSFS_155_FIXED: "susfs_155_fixed" # Fill in your patches here. If there are multiple patches, please separate them with a comma. Leave it blank if there isn't one. -> patch1,patch2 (Only v1.5.5 SuSFS)
-  SUSFS_LATEST_FIXED: "" # Fill in your patches here. If there are multiple patches, please separate them with a comma. Leave it blank if there isn't one. -> patch1,patch2
+  SUSFS_FOLDER_FIXED: ""
+  SUSFS_155_FIXED: ""
+  SUSFS_LATEST_FIXED: ""
 
-  REKERNEL_ENABLE: "false" # if u need Re:Kernel.
+  REKERNEL_ENABLE: "false"
 
-  HOOK_METHOD: "syscall" # Manual hook method ->  syscall and tracepoint.
-  HOOK_OLDER: "true" # contain backport older patch and syscall older patch.
+  HOOK_METHOD: "syscall"
+  HOOK_OLDER: "false"
 
-  KPM_ENABLE: "false" # Only use it for SukiSU-Ultra.
-  KPM_PATCH_SOURCE: "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU_patch/refs/heads/main/kpm/patch_linux" # patch exec file source -> raw.githubusercontent.com/Test/Test/patch .
+  KPM_ENABLE: "false"
+  KPM_PATCH_SOURCE: ""
 
-  BASEBAND_GUARD_ENABLE: "false" #if u want prevent unauthorized writes to critical partitions/device nodes.
-  BASEBAND_GUARD_BOOT: "false" #if u want to protect boot partition.
+  BASEBAND_GUARD_ENABLE: "false"
+  BASEBAND_GUARD_BOOT: "false"
 
-  HIDE_STUFF: "false" # hide some of the features
+  HIDE_STUFF: "false"
 
-  GENERATE_DTB: "false" # if u kernel need DTB , but cannot auto generate it. (Only Anykernel3).
-  GENERATE_CHIP: "qcom" # only supported for qcom and mediatek.
+  GENERATE_DTB: "false"
+  GENERATE_CHIP: "qcom"
 
-  BUILD_DEBUGGER: "false" # Output build errors.
-  SKIP_PATCH: "false" # Ignore errors found in Patch Debugger.
+  BUILD_DEBUGGER: "true"
+  SKIP_PATCH: "true"
 
-  BUILD_OTHER_CONFIG: "false" # Merge config files.
-  MERGE_CONFIG_FILES: "vendor/debugfs.config,vendor/lahaina_QGKI.config"
+  BUILD_OTHER_CONFIG: "false"
+  MERGE_CONFIG_FILES: ""
 
-  FREE_MORE_SPACE: "false" # if u want get more space, enabled it.
+  FREE_MORE_SPACE: "false"
 
 jobs:
   build-kernel:
@@ -114,19 +112,11 @@ jobs:
 
       - name: 🪛 Extra Kernel Options
         run: |
-          # Only ${{ env.DEVICE_NAME }} use it.
           cd $GITHUB_WORKSPACE/device_kernel
           echo "CONFIG_CPU_BIG_ENDIAN=n" >> ./arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
           echo "CONFIG_COMPAT_VDSO=y" >> ./arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
           echo "CONFIG_LTO_NONE=y" >> ./arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
           echo "CONFIG_INIT_STACK_NONE=y" >> ./arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
-          # echo "CONFIG_KPROBES=n" >> ./arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
-          sed -i 's/# CONFIG_SECCOMP is not set/CONFIG_SECCOMP=y/' ./arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
-
-          # If u want to upgrade SuSFS to 1510 and high.
-          # echo "CONFIG_AUDIT=y" >> ./arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
-
-          # sed -i 's|\$(obj)/config_data.gz: [^ ]* FORCE|\$(obj)/config_data.gz: $(KCONFIG_CONFIG) FORCE|' kernel/Makefile
 
       - name: 🧰 Patch Kernel of Re:Kernel
         uses: ./.github/workflows/patch-rekernel
